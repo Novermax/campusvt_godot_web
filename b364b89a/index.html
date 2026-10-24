@@ -38,7 +38,7 @@ body {
 }
 
 #status {
-	background-color: #242424;
+	background-color: #010914;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -68,6 +68,21 @@ body {
 
 #status-progress, #status-notice {
 	display: none;
+}
+
+/* Fascia scura in basso: la barra resta leggibile sopra il banner CVT. */
+#status::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: calc(10% + 4.5rem);
+	background: linear-gradient(to bottom, rgba(1, 9, 20, 0), rgba(1, 9, 20, 0.9) 35%);
+}
+
+#status-progress, #status-text {
+	z-index: 1;
 }
 
 #status-text {
@@ -126,7 +141,7 @@ body {
 		<script src="cvt_loader.js"></script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":47239556,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":50427316,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
