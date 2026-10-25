@@ -141,7 +141,7 @@ body {
 		<script src="cvt_loader.js"></script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":51546356,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":68963548,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -238,7 +238,7 @@ const engine = new Engine(GODOT_CONFIG);
 			statusProgress.value = done;
 			statusProgress.max = total;
 			statusText.textContent = done < total
-				? `Preparazione della pompa: ${done} pezzi su ${total}`
+				? `Preparazione dei modelli: ${done} su ${total}`
 				: 'Avvio della scena…';
 		}).then(() => engine.startGame({
 			'onProgress': function (current, total) {

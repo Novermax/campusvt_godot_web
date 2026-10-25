@@ -14543,6 +14543,11 @@ var CvtLoader = (() => {
       if (ext.extensionName === "KHR_draco_mesh_compression") ext.dispose();
     }
   }
+  function threeNames(doc) {
+    for (const node of doc.getRoot().listNodes()) {
+      node.setName(node.getName().replace(/\s/g, "_").replace(/[\[\].:\/]/g, ""));
+    }
+  }
   async function simplifyDoc(doc, maxError, simplifier) {
     const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
     const { min, max } = getBounds2(scene);
@@ -14628,10 +14633,29 @@ var CvtLoader = (() => {
   var CORE = "https://novermax.github.io/campusvt/";
   var MODELS_WORKER = "https://campusvt-models.mloffredo.workers.dev/models/";
   var MODELS_API_KEY = "cVt-SCM-2024-xK9mP3qL7nR2";
-  var SECTION = "Manutenzione pompa del vuoto";
-  var TUTORIAL = "scenes/Pompa_Becker/tutorial.cvtscript";
-  var SIMPLIFY_ERROR = 5e-4;
   var PARALLEL = 3;
+  var SCENARIOS = [
+    {
+      id: "elettromandrino",
+      section: "Manutenzione Elettromandrino",
+      tutorial: "scenes/Manutenzione_Elettromandrino/tutorial.cvtscript",
+      extra: { "objects.ini": "scenes/Manutenzione_Elettromandrino/objects.ini" },
+      // Il tutorial cita i figli interni (pulpito.Pulsante_mdi): nomi come il desktop.
+      threeNames: true,
+      // pulpito intatto (il ricalcolo delle normali appiattisce le calotte dei
+      // pulsanti), remote 0,1 mm (a 0,5 il guscio si deforma), a500 0,5 mm.
+      simplify: (name) => ({ pulpito: null, remote: 1e-4 })[name] ?? 5e-4
+    },
+    {
+      id: "pompa",
+      section: "Manutenzione pompa del vuoto",
+      tutorial: "scenes/Pompa_Becker/tutorial.cvtscript",
+      extra: {},
+      threeNames: false,
+      // Tutto entro mezzo millimetro, tranne le viti (già leggere).
+      simplify: (name) => name.startsWith("vite_") ? null : 5e-4
+    }
+  ];
   var DATA = "/cvt/";
   function modelsOf(homeconfig, section) {
     const out = [];
@@ -14660,34 +14684,44 @@ var CvtLoader = (() => {
   }
   async function prepare(engine, progress) {
     const started = performance.now();
-    const [homeconfig, tutorial] = await Promise.all([getText(CORE + "scenes/homeconfig.ini"), getText(CORE + TUTORIAL)]);
-    const models = modelsOf(homeconfig, SECTION);
-    if (models.length === 0) throw new Error(`nessun modello nella sezione [${SECTION}] di homeconfig.ini`);
     const utf8 = new TextEncoder();
-    engine.preloadFile(utf8.encode(homeconfig), DATA + "homeconfig.ini");
-    engine.preloadFile(utf8.encode(tutorial), DATA + "tutorial.cvtscript");
-    engine.preloadFile(utf8.encode(models.join("\n")), DATA + "models.txt");
+    const homeconfig = await getText(CORE + "scenes/homeconfig.ini");
+    const jobs = [];
+    for (const sc of SCENARIOS) {
+      const dir = DATA + sc.id + "/";
+      const models = modelsOf(homeconfig, sc.section);
+      if (models.length === 0) throw new Error(`nessun modello nella sezione [${sc.section}] di homeconfig.ini`);
+      const texts = { "tutorial.cvtscript": sc.tutorial, ...sc.extra };
+      const names = Object.keys(texts);
+      const bodies = await Promise.all(names.map((n) => getText(CORE + texts[n])));
+      names.forEach((n, i) => engine.preloadFile(utf8.encode(bodies[i]), dir + n));
+      engine.preloadFile(utf8.encode(homeconfig), dir + "homeconfig.ini");
+      engine.preloadFile(utf8.encode(models.join("\n")), dir + "models.txt");
+      for (const name of models) jobs.push({ sc, dir, name });
+    }
     const decoder = await DracoDecoderModule({ locateFile: (f) => "vendor/" + f });
     const io = new WebIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ "draco3d.decoder": decoder });
     await MeshoptSimplifier.ready;
     let done = 0;
     let bytes = 0;
-    progress(0, models.length, "");
-    const queue = models.slice();
+    progress(0, jobs.length, "");
+    const queue = jobs.slice();
     async function worker() {
       while (queue.length > 0) {
-        const name = queue.shift();
+        const { sc, dir, name } = queue.shift();
         const raw = await getModel(name);
         bytes += raw.byteLength;
         const doc = await io.readBinary(raw);
         removeDraco(doc);
-        if (!name.startsWith("vite_")) await simplifyDoc(doc, SIMPLIFY_ERROR, MeshoptSimplifier);
-        engine.preloadFile(await io.writeBinary(doc), DATA + "models/" + name + ".glb");
-        progress(++done, models.length, name);
+        if (sc.threeNames) threeNames(doc);
+        const err = sc.simplify(name);
+        if (err !== null) await simplifyDoc(doc, err, MeshoptSimplifier);
+        engine.preloadFile(await io.writeBinary(doc), dir + "models/" + name + ".glb");
+        progress(++done, jobs.length, name);
       }
     }
     await Promise.all(Array.from({ length: PARALLEL }, worker));
-    console.log(`[CVT] ${models.length} modelli (${(bytes / 1e6).toFixed(1)} MB) pronti in ${((performance.now() - started) / 1e3).toFixed(1)} s`);
+    console.log(`[CVT] ${jobs.length} modelli (${(bytes / 1e6).toFixed(1)} MB) pronti in ${((performance.now() - started) / 1e3).toFixed(1)} s`);
   }
   return __toCommonJS(loader_exports);
 })();
